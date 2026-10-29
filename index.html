@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apex Trading Labs | Enterprise Algo & Copy Engine</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            900: '#134e4a',
+                            dark: '#090d16',
+                            card: '#111827',
+                            border: '#1f2937'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome & Lucide Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar for dark UI */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #090d16;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1f2937;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #374151;
+        }
+        .glow-teal {
+            box-shadow: 0 0 15px rgba(20, 184, 166, 0.2);
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
+        }
+    </style>
+</head>
+<body class="bg-[#090d16] text-slate-200 antialiased font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="border-b border-gray-800 bg-gray-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-teal-500 to-cyan-400 flex items-center justify-center text-gray-950 font-black text-xl shadow-lg shadow-teal-500/20">
+                    <i class="fa-solid font-bold fa-bolt"></i>
+                </div>
+                <div>
+                    <span class="text-lg font-bold tracking-wider text-white flex items-center gap-2">
+                        APEX TRADING LABS
+                        <span class="text-[10px] bg-teal-500/10 text-teal-400 border border-teal-500/30 px-2 py-0.5 rounded-full font-mono">v3.2 PRO</span>
+                    </span>
+                    <p class="text-xs text-gray-400">Institutional Multi-Tenant Execution Engine</p>
+                </div>
+            </div>
+
+            <!-- Global Status Metrics -->
+            <div class="hidden md:flex items-center space-x-6 text-sm">
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <span class="text-gray-400">Redis Queue:</span>
+                    <span class="font-mono text-emerald-400 font-semibold">Active (2ms)</span>
+                </div>
+                <div class="border-r border-gray-800 h-6"></div>
+                <div>
+                    <span class="text-gray-400">Active Followers:</span>
+                    <span class="font-mono text-white font-semibold" id="global-followers-count">4 Accounts</span>
+                </div>
+                <div class="border-r border-gray-800 h-6"></div>
+                <div>
+                    <span class="text-gray-400">Total AUM:</span>
+                    <span class="font-mono text-teal-400 font-semibold" id="global-aum">$142,850.00</span>
+                </div>
+            </div>
+
+            <!-- Emergency Actions -->
+            <div class="flex items-center space-x-3">
+                <button id="panic-btn" onclick="triggerPanicClose()" class="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 glow-red">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <span>PANIC CLOSE ALL</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-gray-800 gap-6 text-sm font-medium">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="py-3 text-teal-400 border-b-2 border-teal-400 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line"></i> Execution & Live Monitor
+            </button>
+            <button onclick="switchTab('copy-engine')" id="tab-copy-engine" class="py-3 text-gray-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
+                <i class="fa-solid fa-users-gear"></i> Copy Engine & Risk Rules
+            </button>
+            <button onclick="switchTab('architecture')" id="tab-architecture" class="py-3 text-gray-400 hover:text-white border-b-2 border-transparent flex items-center gap-2">
+                <i class="fa-solid fa-code"></i> Backend Architecture
+            </button>
+        </div>
+
+        <!-- TAB 1: EXECUTION & LIVE MONITOR -->
+        <div id="view-dashboard" class="space-y-6">
+            
+            <!-- Real-time Market Ticker Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-semibold">XAUUSD (GOLD)</p>
+                        <p class="text-lg font-mono font-bold text-white mt-1" id="price-xauusd">2,742.50</p>
+                    </div>
+                    <span id="badge-xauusd" class="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+0.42%</span>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-semibold">EURUSD</p>
+                        <p class="text-lg font-mono font-bold text-white mt-1" id="price-eurusd">1.08245</p>
+                    </div>
+                    <span id="badge-eurusd" class="text-xs font-mono font-semibold text-red-400 bg-red-500/10 px-2 py-1 rounded">-0.12%</span>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-semibold">GBPUSD</p>
+                        <p class="text-lg font-mono font-bold text-white mt-1" id="price-gbpusd">1.29810</p>
+                    </div>
+                    <span id="badge-gbpusd" class="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+0.18%</span>
+                </div>
+                <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs text-gray-400 font-semibold">USDJPY</p>
+                        <p class="text-lg font-mono font-bold text-white mt-1" id="price-usdjpy">152.640</p>
+                    </div>
+                    <span id="badge-usdjpy" class="text-xs font-mono font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">+0.35%</span>
+                </div>
+            </div>
+
+            <!-- Execution Controls & Equity Curve -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Master Signal Order Pad -->
+                <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 space-y-4">
+                    <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                        <h3 class="font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-paper-plane text-teal-400"></i> Master Order Terminal
+                        </h3>
+                        <span class="text-xs text-teal-400 bg-teal-500/10 px-2 py-0.5 rounded border border-teal-500/20">Master #101</span>
+                    </div>
+
+                    <form onsubmit="executeMasterTrade(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-400 mb-1">Trading Asset Pair</label>
+                            <select id="trade-symbol" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                                <option value="XAUUSD">XAUUSD (Gold)</option>
+                                <option value="EURUSD">EURUSD (Euro / US Dollar)</option>
+                                <option value="GBPUSD">GBPUSD (Great Britain Pound)</option>
+                                <option value="USDJPY">USDJPY (US Dollar / Yen)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Master Lot Volume</label>
+                                <input type="number" step="0.01" min="0.01" value="1.00" id="trade-lots" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Order Execution</label>
+                                <select id="trade-type" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                                    <option value="BUY">BUY Market</option>
+                                    <option value="SELL">SELL Market</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Stop Loss (Optional)</label>
+                                <input type="number" step="0.001" placeholder="Auto / Off" id="trade-sl" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-400 mb-1">Take Profit (Optional)</label>
+                                <input type="number" step="0.001" placeholder="Auto / Off" id="trade-tp" class="w-full bg-gray-950 border border-gray-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-gray-950 font-bold py-2.5 rounded-lg text-sm transition shadow-lg shadow-teal-500/20">
+                            Broadcast Signal to All Followers
+                        </button>
+                    </form>
+
+                    <!-- Automated Algo Bots Toggle -->
+                    <div class="pt-3 border-t border-gray-800 space-y-2">
+                        <p class="text-xs font-semibold text-gray-400">Automated Strategy Execution Bots</p>
+                        <div class="flex justify-between items-center bg-gray-950 p-2.5 rounded-lg border border-gray-800 text-xs">
+                            <div>
+                                <p class="font-bold text-white">SMC Liquidity Scalper v4</p>
+                                <p class="text-gray-500">Gold FVG & AMD Cycles</p>
+                            </div>
+                            <button onclick="toggleBot(this)" class="bg-gray-800 text-gray-300 px-3 py-1 rounded font-semibold transition">OFF</button>
+                        </div>
+                        <div class="flex justify-between items-center bg-gray-950 p-2.5 rounded-lg border border-gray-800 text-xs">
+                            <div>
+                                <p class="font-bold text-white">Grid Alpha FX Pro</p>
+                                <p class="text-gray-500">EURUSD & GBPUSD Range</p>
+                            </div>
+                            <button onclick="toggleBot(this)" class="bg-gray-800 text-gray-300 px-3 py-1 rounded font-semibold transition">OFF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Equity Visualizer & Key Metrics -->
+                <div class="lg:col-span-2 bg-gray-900/60 border border-gray-800 rounded-2xl p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 class="font-bold text-white">Live Master Equity Curve</h3>
+                                <p class="text-xs text-gray-400">Real-time performance analytics & floating profit tracking</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-mono font-bold text-emerald-400" id="total-equity-display">$50,240.18</p>
+                                <p class="text-xs text-emerald-500 font-medium">+14.8% All-Time Return</p>
+                            </div>
+                        </div>
+
+                        <!-- SVG Equity Curve Graph -->
+                        <div class="h-48 w-full relative">
+                            <svg class="w-full h-full overflow-visible" viewBox="0 0 500 150">
+                                <defs>
+                                    <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" stop-color="#14b8a6" stop-opacity="0.3"/>
+                                        <stop offset="100%" stop-color="#14b8a6" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <path d="M0,120 Q70,110 120,80 T250,90 T370,40 T500,20 L500,150 L0,150 Z" fill="url(#gradient)"/>
+                                <path d="M0,120 Q70,110 120,80 T250,90 T370,40 T500,20" fill="none" stroke="#14b8a6" stroke-width="3"/>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Key Trading Analytics Banner -->
+                    <div class="grid grid-cols-4 gap-2 pt-4 border-t border-gray-800 text-center">
+                        <div class="bg-gray-950 p-2.5 rounded-lg">
+                            <p class="text-[10px] text-gray-400 font-semibold uppercase">Win Rate</p>
+                            <p class="text-sm font-mono font-bold text-white mt-0.5">73.4%</p>
+                        </div>
+                        <div class="bg-gray-950 p-2.5 rounded-lg">
+                            <p class="text-[10px] text-gray-400 font-semibold uppercase">Profit Factor</p>
+                            <p class="text-sm font-mono font-bold text-teal-400 mt-0.5">2.18</p>
+                        </div>
+                        <div class="bg-gray-950 p-2.5 rounded-lg">
+                            <p class="text-[10px] text-gray-400 font-semibold uppercase">Max Drawdown</p>
+                            <p class="text-sm font-mono font-bold text-emerald-400 mt-0.5">4.2%</p>
+                        </div>
+                        <div class="bg-gray-950 p-2.5 rounded-lg">
+                            <p class="text-[10px] text-gray-400 font-semibold uppercase">Sharpe Ratio</p>
+                            <p class="text-sm font-mono font-bold text-white mt-0.5">2.84</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Open Positions & Execution Blotter -->
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <div>
+                        <h3 class="font-bold text-white">Live Execution Ledger</h3>
+                        <p class="text-xs text-gray-400">Synchronized open positions across master and follower accounts</p>
+                    </div>
+                    <span class="text-xs text-gray-400 font-mono" id="open-trades-count">3 Active Positions</span>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-950 text-gray-400 text-xs uppercase font-mono border-b border-gray-800">
+                            <tr>
+                                <th class="p-3">Account</th>
+                                <th class="p-3">Symbol</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Volume</th>
+                                <th class="p-3">Entry Price</th>
+                                <th class="p-3">Current Price</th>
+                                <th class="p-3">Latency</th>
+                                <th class="p-3">Floating P&L</th>
+                                <th class="p-3 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="positions-table-body" class="divide-y divide-gray-800/50 font-mono text-xs">
+                            <!-- Populated dynamically by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: COPY ENGINE & FOLLOWER RISK RULES -->
+        <div id="view-copy-engine" class="hidden space-y-6">
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <div>
+                        <h3 class="font-bold text-white">Connected Follower Accounts & Risk Controls</h3>
+                        <p class="text-xs text-gray-400">Configure proportional lot scaling, symbol adapters, and equity protection thresholds</p>
+                    </div>
+                    <button onclick="addFollowerPrompt()" class="bg-teal-500 hover:bg-teal-600 text-gray-950 font-bold px-3 py-1.5 rounded-lg text-xs transition">
+                        + Link Follower Account
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="followers-cards-container">
+                    <!-- Cards populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: BACKEND ARCHITECTURE & CODE -->
+        <div id="view-architecture" class="hidden space-y-6">
+            <div class="bg-gray-900/60 border border-gray-800 rounded-2xl p-5 space-y-4">
+                <div class="border-b border-gray-800 pb-3">
+                    <h3 class="font-bold text-white">System Architecture & Production Deployment</h3>
+                    <p class="text-xs text-gray-400">Copy-paste production backend code templates to connect Python, MetaTrader 5, and Redis to this web dashboard.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Python Async Worker Code Block -->
+                    <div class="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+                        <div class="bg-gray-900 px-4 py-2 text-xs font-mono text-gray-400 border-b border-gray-800 flex justify-between items-center">
+                            <span>Python Worker (copy_engine.py)</span>
+                            <button onclick="navigator.clipboard.writeText(pythonCodeText); alert('Python code copied!');" class="hover:text-teal-400">Copy Code</button>
+                        </div>
+                        <pre class="p-4 text-xs font-mono text-teal-300 overflow-x-auto">
+<code id="python-code-display"># APEX COPY ENGINE - ASYNC REDIS REPLICATION WORKER
+import asyncio
+import json
+import redis.asyncio as redis
+import MetaTrader5 as mt5
+
+r = redis.Redis(host='localhost', port=6379, db=0)
+
+async def process_signal(trade_event):
+    symbol = trade_event['symbol']
+    action = trade_event['type'] # BUY or SELL
+    lots = trade_event['lots']
+    
+    # Calculate follower lot size based on relative equity
+    follower_equity = 10000.0
+    master_equity = 50000.0
+    scaled_lots = round((follower_equity / master_equity) * lots, 2)
+
+    # MT5 Order Dispatch
+    request = {
+        "action": mt5.TRADE_ACTION_DEAL,
+        "symbol": symbol,
+        "volume": scaled_lots,
+        "type": mt5.ORDER_TYPE_BUY if action == 'BUY' else mt5.ORDER_TYPE_SELL,
+        "price": mt5.symbol_info_tick(symbol).ask if action == 'BUY' else mt5.symbol_info_tick(symbol).bid,
+        "deviation": 20,
+        "magic": 888111,
+        "comment": "ApexCopyTrade",
+    }
+    result = mt5.order_send(request)
+    print(f"Replicated Trade Code: {result.retcode}")
+
+async def main():
+    pubsub = r.pubsub()
+    await pubsub.subscribe('master_signals')
+    async for message in pubsub.listen():
+        if message['type'] == 'message':
+            data = json.loads(message['data'].decode('utf-8'))
+            await process_signal(data)
+
+if __name__ == '__main__':
+    asyncio.run(main())</code>
+                        </pre>
+                    </div>
+
+                    <!-- MQL5 Expert Advisor Broadcast Code Block -->
+                    <div class="bg-gray-950 rounded-xl border border-gray-800 overflow-hidden">
+                        <div class="bg-gray-900 px-4 py-2 text-xs font-mono text-gray-400 border-b border-gray-800 flex justify-between items-center">
+                            <span>MT5 (MQL5) Signal Sender</span>
+                            <button onclick="navigator.clipboard.writeText(mql5CodeText); alert('MQL5 code copied!');" class="hover:text-teal-400">Copy Code</button>
+                        </div>
+                        <pre class="p-4 text-xs font-mono text-cyan-300 overflow-x-auto">
+<code id="mql5-code-display">//+------------------------------------------------------------------+
+//| Apex Master Signal Sender.mq5                                   |
+//+------------------------------------------------------------------+
+#property copyright "Apex Trading Labs"
+#property version   "3.00"
+
+#include &lt;JAson.mqh&gt; // JSON library for MQL5
+
+void OnTradeTransaction(const MqlTradeTransaction& trans,
+                        const MqlTradeRequest& request,
+                        const MqlTradeResult& result)
+{
+   if(trans.type == TRADE_TRANSACTION_ORDER_ADD)
+   {
+      CJAVal json;
+      json["symbol"] = trans.symbol;
+      json["type"] = (trans.order_type == ORDER_TYPE_BUY) ? "BUY" : "SELL";
+      json["lots"] = trans.volume;
+      
+      string payload = json.Serialize();
+      
+      // Send payload via WebRequest to FastAPI/Redis Bridge
+      char data[], result_data[];
+      string headers = "Content-Type: application/json\r\n";
+      StringToCharArray(payload, data, 0, WHOLE_ARRAY, CP_UTF8);
+      
+      int res = WebRequest("POST", "http://localhost:8000/api/signal", 
+                          headers, 1000, data, result_data, headers);
+      Print("Signal Broadcast Sent: ", res);
+   }
+}</code>
+                        </pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-gray-800 bg-gray-950 py-6 text-center text-xs text-gray-500">
+        <p>Apex Trading Labs © 2026. Built for Algorithmic & Institutional Copy Trading Operations.</p>
+    </footer>
+
+    <!-- Interactive Dashboard State & Logic Engine -->
+    <script>
+        // Core Market Prices
+        let marketPrices = {
+            XAUUSD: 2742.50,
+            EURUSD: 1.08245,
+            GBPUSD: 1.29810,
+            USDJPY: 152.640
+        };
+
+        // Followers State
+        let followers = [
+            { id: 'FL-9021', name: 'Alpha Hedge Fund', broker: 'IC Markets (MT5)', equity: 85200.00, riskMult: 1.0, maxDD: 8.0, suffix: '', status: 'Active' },
+            { id: 'FL-3044', name: 'Retail Copy Client A', broker: 'Exness (MT4)', equity: 12400.00, riskMult: 0.5, maxDD: 5.0, suffix: '.m', status: 'Active' },
+            { id: 'FL-5112', name: 'Prop Account Challenge', broker: 'FTMO (MT5)', equity: 25000.00, riskMult: 0.5, maxDD: 4.0, suffix: '', status: 'Active' },
+            { id: 'FL-8830', name: 'Private Investor B', broker: 'Pepperstone', equity: 20250.00, riskMult: 2.0, maxDD: 10.0, suffix: '', status: 'Active' }
+        ];
+
+        // Active Trades State
+        let openPositions = [
+            { id: 'TR-1081', account: 'Master #101', symbol: 'XAUUSD', type: 'BUY', lots: 1.00, entry: 2738.20, latency: 0 },
+            { id: 'TR-1082', account: 'FL-9021 (Alpha)', symbol: 'XAUUSD', type: 'BUY', lots: 1.00, entry: 2738.22, latency: 12 },
+            { id: 'TR-1083', account: 'FL-3044 (Exness)', symbol: 'XAUUSD.m', type: 'BUY', lots: 0.50, entry: 2738.25, latency: 18 }
+        ];
+
+        const pythonCodeText = document.getElementById('python-code-display').innerText;
+        const mql5CodeText = document.getElementById('mql5-code-display').innerText;
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            renderFollowers();
+            renderPositions();
+            startMarketSimulation();
+        });
+
+        // Tab Switching Logic
+        function switchTab(tabName) {
+            document.getElementById('view-dashboard').classList.add('hidden');
+            document.getElementById('view-copy-engine').classList.add('hidden');
+            document.getElementById('view-architecture').classList.add('hidden');
+
+            document.getElementById('tab-dashboard').className = "py-3 text-gray-400 hover:text-white border-b-2 border-transparent flex items-center gap-2";
+            document.getElementById('tab-copy-engine').className = "py-3 text-gray-400 hover:text-white border-b-2 border-transparent flex items-center gap-2";
+            document.getElementById('tab-architecture').className = "py-3 text-gray-400 hover:text-white border-b-2 border-transparent flex items-center gap-2";
+
+            if (tabName === 'dashboard') {
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                document.getElementById('tab-dashboard').className = "py-3 text-teal-400 border-b-2 border-teal-400 flex items-center gap-2";
+            } else if (tabName === 'copy-engine') {
+                document.getElementById('view-copy-engine').classList.remove('hidden');
+                document.getElementById('tab-copy-engine').className = "py-3 text-teal-400 border-b-2 border-teal-400 flex items-center gap-2";
+            } else if (tabName === 'architecture') {
+                document.getElementById('view-architecture').classList.remove('hidden');
+                document.getElementById('tab-architecture').className = "py-3 text-teal-400 border-b-2 border-teal-400 flex items-center gap-2";
+            }
+        }
+
+        // Real-Time Price Simulation Engine
+        function startMarketSimulation() {
+            setInterval(() => {
+                // Random walk tick simulation
+                marketPrices.XAUUSD += (Math.random() - 0.49) * 0.40;
+                marketPrices.EURUSD += (Math.random() - 0.49) * 0.00015;
+                marketPrices.GBPUSD += (Math.random() - 0.49) * 0.00018;
+                marketPrices.USDJPY += (Math.random() - 0.49) * 0.025;
+
+                // Update Price Displays
+                document.getElementById('price-xauusd').innerText = marketPrices.XAUUSD.toFixed(2);
+                document.getElementById('price-eurusd').innerText = marketPrices.EURUSD.toFixed(5);
+                document.getElementById('price-gbpusd').innerText = marketPrices.GBPUSD.toFixed(5);
+                document.getElementById('price-usdjpy').innerText = marketPrices.USDJPY.toFixed(3);
+
+                renderPositions();
+            }, 1000);
+        }
+
+        // Calculate Floating Profit
+        function calculatePL(pos) {
+            let baseSymbol = pos.symbol.replace('.m', '');
+            let currentPrice = marketPrices[baseSymbol] || pos.entry;
+            let diff = pos.type === 'BUY' ? (currentPrice - pos.entry) : (pos.entry - currentPrice);
+
+            if (baseSymbol === 'XAUUSD') return diff * pos.lots * 100;
+            if (baseSymbol === 'EURUSD' || baseSymbol === 'GBPUSD') return diff * pos.lots * 100000;
+            if (baseSymbol === 'USDJPY') return (diff / currentPrice) * pos.lots * 100000;
+            return 0;
+        }
+
+        // Render Positions Table
+        function renderPositions() {
+            const tbody = document.getElementById('positions-table-body');
+            tbody.innerHTML = '';
+
+            let totalFloatingPL = 0;
+
+            openPositions.forEach(pos => {
+                let baseSymbol = pos.symbol.replace('.m', '');
+                let currPrice = marketPrices[baseSymbol] || pos.entry;
+                let pl = calculatePL(pos);
+                totalFloatingPL += pl;
+
+                let plClass = pl >= 0 ? 'text-emerald-400' : 'text-red-400';
+                let typeBg = pos.type === 'BUY' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400';
+
+                let tr = document.createElement('tr');
+                tr.className = 'hover:bg-gray-800/30 transition';
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-white">${pos.account}</td>
+                    <td class="p-3">${pos.symbol}</td>
+                    <td class="p-3"><span class="px-2 py-0.5 rounded ${typeBg} font-bold">${pos.type}</span></td>
+                    <td class="p-3">${pos.lots.toFixed(2)}</td>
+                    <td class="p-3">${pos.entry.toFixed(baseSymbol === 'XAUUSD' ? 2 : 5)}</td>
+                    <td class="p-3">${currPrice.toFixed(baseSymbol === 'XAUUSD' ? 2 : 5)}</td>
+                    <td class="p-3 text-gray-400">${pos.latency}ms</td>
+                    <td class="p-3 font-bold ${plClass}">$${pl.toFixed(2)}</td>
+                    <td class="p-3 text-right">
+                        <button onclick="closePosition('${pos.id}')" class="text-xs bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/20">Close</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('open-trades-count').innerText = `${openPositions.length} Active Positions`;
+            document.getElementById('total-equity-display').innerText = `$${(50240.18 + totalFloatingPL).toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        }
+
+        // Execute Master Order Form
+        function executeMasterTrade(e) {
+            e.preventDefault();
+            let symbol = document.getElementById('trade-symbol').value;
+            let lots = parseFloat(document.getElementById('trade-lots').value);
+            let type = document.getElementById('trade-type').value;
+            let currentPrice = marketPrices[symbol];
+
+            // Add Master Position
+            let masterTradeId = 'TR-' + Math.floor(1000 + Math.random() * 9000);
+            openPositions.push({
+                id: masterTradeId,
+                account: 'Master #101',
+                symbol: symbol,
+                type: type,
+                lots: lots,
+                entry: currentPrice,
+                latency: 0
+            });
+
+            // Replicate to Active Followers
+            followers.forEach(fl => {
+                if (fl.status === 'Active') {
+                    let followerSymbol = symbol + fl.suffix;
+                    let followerLots = roundLot(lots * fl.riskMult);
+                    let latency = Math.floor(8 + Math.random() * 25);
+
+                    openPositions.push({
+                        id: 'TR-' + Math.floor(1000 + Math.random() * 9000),
+                        account: `${fl.id} (${fl.name.split(' ')[0]})`,
+                        symbol: followerSymbol,
+                        type: type,
+                        lots: followerLots,
+                        entry: currentPrice + (type === 'BUY' ? 0.02 : -0.02),
+                        latency: latency
+                    });
+                }
+            });
+
+            renderPositions();
+        }
+
+        function roundLot(val) {
+            return Math.max(0.01, Math.round(val * 100) / 100);
+        }
+
+        // Close Individual Position
+        function closePosition(id) {
+            openPositions = openPositions.filter(p => p.id !== id);
+            renderPositions();
+        }
+
+        // Emergency Panic Close All
+        function triggerPanicClose() {
+            if (confirm("EMERGENCY PANIC TRIGGER: Are you sure you want to close ALL open market positions across all connected follower accounts immediately?")) {
+                openPositions = [];
+                renderPositions();
+                alert("ALL POSITIONS CLOSED SUCCESSFULLY.");
+            }
+        }
+
+        // Toggle Bot Execution
+        function toggleBot(btn) {
+            if (btn.innerText === 'OFF') {
+                btn.innerText = 'ON';
+                btn.className = "bg-teal-500 text-gray-950 px-3 py-1 rounded font-bold transition glow-teal";
+            } else {
+                btn.innerText = 'OFF';
+                btn.className = "bg-gray-800 text-gray-300 px-3 py-1 rounded font-semibold transition";
+            }
+        }
+
+        // Render Followers List
+        function renderFollowers() {
+            const container = document.getElementById('followers-cards-container');
+            container.innerHTML = '';
+
+            let totalAUM = 0;
+
+            followers.forEach((fl, index) => {
+                totalAUM += fl.equity;
+                let card = document.createElement('div');
+                card.className = "bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3";
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-xs font-mono text-teal-400 font-bold">${fl.id}</span>
+                            <h4 class="font-bold text-white">${fl.name}</h4>
+                            <p class="text-xs text-gray-500">${fl.broker}</p>
+                        </div>
+                        <span class="text-xs px-2 py-0.5 rounded font-bold ${fl.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}">${fl.status}</span>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 bg-gray-900/60 p-2.5 rounded-lg text-center text-xs">
+                        <div>
+                            <p class="text-gray-500">Balance</p>
+                            <p class="font-mono font-bold text-white">$${fl.equity.toLocaleString()}</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Risk Scale</p>
+                            <p class="font-mono font-bold text-teal-400">${fl.riskMult}x</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500">Max DD</p>
+                            <p class="font-mono font-bold text-emerald-400">${fl.maxDD}%</p>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center text-xs pt-1">
+                        <span class="text-gray-500">Symbol Suffix: <code class="text-gray-300 font-bold">${fl.suffix || 'None'}</code></span>
+                        <button onclick="toggleFollowerStatus(${index})" class="text-gray-400 hover:text-white underline">
+                            ${fl.status === 'Active' ? 'Pause Copying' : 'Resume Copying'}
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('global-followers-count').innerText = `${followers.length} Accounts`;
+            document.getElementById('global-aum').innerText = `$${totalAUM.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
+        }
+
+        function toggleFollowerStatus(index) {
+            followers[index].status = followers[index].status === 'Active' ? 'Paused' : 'Active';
+            renderFollowers();
+        }
+
+        function addFollowerPrompt() {
+            let name = prompt("Enter Follower / Client Name:");
+            if (!name) return;
+            let broker = prompt("Enter Broker Name (e.g., Exness, FTMO, IC Markets):", "IC Markets");
+            let equity = parseFloat(prompt("Enter Account Balance ($):", "10000") || "10000");
+
+            followers.push({
+                id: 'FL-' + Math.floor(1000 + Math.random() * 9000),
+                name: name,
+                broker: broker,
+                equity: equity,
+                riskMult: 1.0,
+                maxDD: 5.0,
+                suffix: '',
+                status: 'Active'
+            });
+
+            renderFollowers();
+        }
+    </script>
+</body>
+</html>
